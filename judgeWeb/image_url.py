@@ -21,44 +21,46 @@ user_agent = [
     "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
     "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
     "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.0 Safari/536.3",
-    "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24"
-    ]
+    "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24",
+]
+
 
 def get_headers():
-    return {
-        "User-Agent": random.choice(user_agent),
-        "Referer": 'https://telegra.ph/'
-    }
+    return {"User-Agent": random.choice(user_agent), "Referer": "https://telegra.ph/"}
+
 
 def get_html_text(url):
     headers = {
         "User-Agent": random.choice(user_agent),
-        "Referer": 'https://telegra.ph/'
+        "Referer": "https://telegra.ph/",
     }
 
     return a_requests.get(url=url, headers=headers).text
 
+
 def get_image_src(html_text):
     return re.findall(r'img src="(\S+)"', html_text)
 
+
 def get_image_url_name(img_info):
     info = []
-    for i in img_info:
-        name = i.replace('/file/', '')
-        url = 'https://telegra.ph' + i
-        info.append({"name":name, "url":url})
+    for id, i in enumerate(img_info):
+        name = i.replace("/file/", "")
+        url = "https://telegra.ph" + i
+        info.append({"name": name, "url": url, "id": id})
     return info
+
 
 def get_image_content(url):
     headers = {
         "User-Agent": random.choice(user_agent),
-        "Referer": 'https://telegra.ph/'
+        "Referer": "https://telegra.ph/",
     }
     return a_requests.get(url=url, headers=headers).content
 
+
 def get_image_info(url):
     return get_image_url_name(get_image_src(get_html_text(url)))
-
 
 
 # if __name__ == '__main__':

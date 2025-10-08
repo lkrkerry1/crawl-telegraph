@@ -40,11 +40,15 @@ def download_image(url: str, threadcnt: int = 32) -> None:
         t.join()
 
 
-def download_imagelist(urls: str) -> None:
+def download_imagelist(urls: str, threadcnt: int = 32) -> None:
     url_list = urls.splitlines()
     threads: list[threading.Thread] = []
     for url in url_list:
-        t = threading.Thread(target=download_image, args=(url,))
+        if not url.strip():
+            continue
+        t = threading.Thread(
+            target=download_image, args=(url, threadcnt // len(url_list))
+        )
         threads.append(t)
         t.start()
     for t in threads:
@@ -52,6 +56,10 @@ def download_imagelist(urls: str) -> None:
 
 
 if __name__ == "__main__":
-    url = "https://telegra.ph/NO001-%E6%98%AF%E4%B8%80%E5%8F%AA%E5%BA%9F%E5%96%B5%E4%BA%86-%E5%A5%B6%E7%89%9B-10-01-2"
-    download_image(url, 32)
+    url = """https://telegra.ph/NO001-是一只废喵了-奶牛-10-01-2
+    
+https://telegra.ph/NO002-是一只废喵了-竞泳-10-01
+    https://telegra.ph/NO003-Fantia-2022年07月套图-56P-173MB-10-01-2
+  https://telegra.ph/NO004-Fantia-2022年09月套图-35P-376MB-10-03"""
+    download_imagelist(url)
     print(">>> 任务结束！")

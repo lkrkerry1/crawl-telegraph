@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <script src="/webui.js"></script>
+    <title>crawl-telegraph</title>
+    <style>
+        body {
+            font-family: Segoe UI, Helvetica, Arial;
+            margin: 16px
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box
+        }
+
+        #urls {
+            height: 160px
+        }
+
+        #log {
+            height: 300px;
+            overflow: auto;
+            background: #111;
+            color: #bcd;
+            padding: 8px;
+            font-family: monospace
+        }
+
+        button {
+            margin-top: 8px;
+            padding: 6px 12px
+        }
+    </style>
+</head>
+
+<body>
+    <h3>crawl-telegraph — 输入要下载的 telegra.ph 链接（每行一个）</h3>
+    <textarea id="urls" placeholder="https://telegra.ph/Example-...\n"></textarea>
+    <div>
+        <button id="start">开始下载</button>
+    </div>
+    <!-- probe 按钮已移除 -->
+    <h4>日志</h4>
+    <div id="log"></div>
+
+    <script>
+        const start = document.getElementById('start')
+        start.onclick = async () => {
+            const urls = document.getElementById('urls').value
+            let called = false
+            // 1. window.start_download
+            if (typeof window.start_download === 'function') {
+                try {
+                    window.start_download(urls)
+                    push_log('[start] 使用 window.start_download 调用完毕')
+                    called = true
+                } catch (e) {
+                    push_log('[start] window.start_download 调用异常: ' + e)
+                }
+            }
+            // 2. window.webui.start_download
+            else if (window.webui && typeof window.webui.start_download === 'function') {
+                try {
+                    window.webui.start_download(urls)
+                    push_log('[start] 使用 window.webui.start_download 调用完毕')
+                    called = true
+                } catch (e) {
+                    push_log('[start] window.webui.start_download 调用异常: ' + e)
+                }
+            }
+            // 3. window.WebuiBridge.start_download
+            else if (window.WebuiBridge && typeof window.WebuiBridge.start_download === 'function') {
+                try {
+                    window.WebuiBridge.start_download(urls)
+                    push_log('[start] 使用 window.WebuiBridge.start_download 调用完毕')
+                    called = true
+                } catch (e) {
+                    push_log('[start] window.WebuiBridge.start_download 调用异常: ' + e)
+                }
+            }
+            if (!called) {
+                push_log('[start] 未找到可用的 bridge (start_download)')
+            }
+        }
+
+        // 前端会调用前端函数 push_log(msg)
+        function push_log(msg) {
+            const log = document.getElementById('log')
+            const p = document.createElement('div')
+            p.textContent = msg
+            log.appendChild(p)
+            log.scrollTop = log.scrollHeight
+        }
+
+        // probe 诊断相关 JS 已移除
+    </script>
+</body>
+
+</html>

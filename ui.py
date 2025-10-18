@@ -7,26 +7,6 @@ import json
 from main import download_imagelist
 
 
-def _load_template() -> str:
-    """Load and return the HTML template used by the UI.
-
-    The template is expected at ``./templates/index.html`` relative to the
-    repository root. This helper raises ``FileNotFoundError`` when the file
-    is missing which surfaces a clear error to the developer.
-
-    Returns
-    -------
-    str
-        The HTML content as a UTF-8 string.
-    """
-    tpl = Path(__file__).resolve().parent / "templates" / "index.html"
-    if not tpl.exists():
-        raise FileNotFoundError(
-            f"Template not found: {tpl}. Please ensure ./templates/index.html exists."
-        )
-    return tpl.read_text(encoding="utf-8")
-
-
 def launch_ui():
     w = webui.Window()
 

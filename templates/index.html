@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <script src="/webui.js"></script>
+    <script src="webui.js"></script>
     <title>crawl-telegraph</title>
     <style>
         body {
@@ -42,7 +42,6 @@
     <div>
         <button id="start">开始下载</button>
     </div>
-    <!-- probe 按钮已移除 -->
     <h4>日志</h4>
     <div id="log"></div>
 
@@ -51,35 +50,12 @@
         start.onclick = async () => {
             const urls = document.getElementById('urls').value
             let called = false
-            // 1. window.start_download
-            if (typeof window.start_download === 'function') {
-                try {
-                    window.start_download(urls)
-                    push_log('[start] 使用 window.start_download 调用完毕')
-                    called = true
-                } catch (e) {
-                    push_log('[start] window.start_download 调用异常: ' + e)
-                }
-            }
-            // 2. window.webui.start_download
-            else if (window.webui && typeof window.webui.start_download === 'function') {
-                try {
-                    window.webui.start_download(urls)
-                    push_log('[start] 使用 window.webui.start_download 调用完毕')
-                    called = true
-                } catch (e) {
-                    push_log('[start] window.webui.start_download 调用异常: ' + e)
-                }
-            }
-            // 3. window.WebuiBridge.start_download
-            else if (window.WebuiBridge && typeof window.WebuiBridge.start_download === 'function') {
-                try {
-                    window.WebuiBridge.start_download(urls)
-                    push_log('[start] 使用 window.WebuiBridge.start_download 调用完毕')
-                    called = true
-                } catch (e) {
-                    push_log('[start] window.WebuiBridge.start_download 调用异常: ' + e)
-                }
+            try {
+                window.start_download(urls)
+                push_log('[start] 使用 window.start_download 调用完毕')
+                called = true
+            } catch (e) {
+                push_log('[start] window.start_download 调用异常: ' + e)
             }
             if (!called) {
                 push_log('[start] 未找到可用的 bridge (start_download)')
@@ -94,8 +70,6 @@
             log.appendChild(p)
             log.scrollTop = log.scrollHeight
         }
-
-        // probe 诊断相关 JS 已移除
     </script>
 </body>
 

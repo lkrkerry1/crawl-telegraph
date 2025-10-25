@@ -6,7 +6,7 @@
 
 1. 安装依赖（推荐在 PowerShell 下）：
 	```powershell
-	pip install requests webui2
+	pip install -e .
 	```
 
 2. 命令行运行：

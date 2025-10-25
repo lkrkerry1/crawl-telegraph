@@ -35,9 +35,9 @@ crawl-telegraph = "main:main"
 crawl-telegraph-ui = "ui:launch_ui"
 
 [project.urls]
-Homepage = ""
-Repository = ""
-Source = "https://example.com/your-repo"
+Homepage = "https://github.com/lkrkerry1/crawl-telegraph"
+Repository = "https://github.com/lkrkerry1/crawl-telegraph"
+Source = "https://github.com/lkrkerry1/crawl-telegraph"
 
 [tool.setuptools.packages.find]
 where = ["."]

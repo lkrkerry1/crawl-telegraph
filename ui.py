@@ -40,7 +40,19 @@ def launch_ui():
 
     # 绑定开始下载的后端函数
     def start_download(event: "webui.Event") -> None:
-        urls = event.get_string()  # 第一个参数为 urls 字符串
+        raw = event.get_string()
+        # backward compatible: accept either raw urls string or JSON string with settings
+        try:
+            params = json.loads(raw)
+            urls = params.get("urls", "")
+            output = params.get("output", "./download")
+            filename_format = params.get("filename_format", "{id:03d}_{name}{ext}")
+            max_threads = int(params.get("max_threads", 32))
+        except Exception:
+            urls = raw
+            output = "./download"
+            filename_format = "{id:03d}_{name}{ext}"
+            max_threads = 32
 
         def worker(u: str, ev: "webui.Event"):
             push_log_to_client(ev, "开始下载任务")
@@ -73,7 +85,13 @@ def launch_ui():
                         # not JSON, just push raw
                         push_log_to_client(ev, msg)
 
-                download_imagelist(u, progress=progress_cb)
+                download_imagelist(
+                    u,
+                    threadcnt=max_threads,
+                    progress=progress_cb,
+                    root_path=output,
+                    filename_format=filename_format,
+                )
                 push_log_to_client(ev, "下载任务完成")
             except Exception as ex:
                 push_log_to_client(ev, f"下载任务出错：{ex}")

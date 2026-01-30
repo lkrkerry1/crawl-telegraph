@@ -39,6 +39,15 @@
 <body>
     <h3>crawl-telegraph — 输入要下载的 telegra.ph 链接（每行一个）</h3>
     <textarea id="urls" placeholder="https://telegra.ph/Example-...\n"></textarea>
+
+    <div style="margin-top:8px">
+        <label>输出目录: <input id="output" placeholder="./download" value="./download" style="width:220px"></label>
+        <label style="margin-left:12px">文件名格式: <input id="fmt" placeholder="{id:03d}_{name}{ext}"
+                value="{id:03d}_{name}{ext}" style="width:360px"></label>
+        <label style="margin-left:12px">最大线程数: <input id="threads" type="number" min="1" value="32"
+                style="width:80px"></label>
+    </div>
+
     <div>
         <button id="start">开始下载</button>
     </div>
@@ -49,10 +58,15 @@
         const start = document.getElementById('start')
         start.onclick = async () => {
             const urls = document.getElementById('urls').value
+            const output = document.getElementById('output').value || './download'
+            const fmt = document.getElementById('fmt').value || '{id:03d}_{name}{ext}'
+            const threads = parseInt(document.getElementById('threads').value) || 32
+            const params = { urls: urls, output: output, filename_format: fmt, max_threads: threads }
             let called = false
             try {
-                window.start_download(urls)
-                push_log('[start] 使用 window.start_download 调用完毕')
+                window.start_download(JSON.stringify(params))
+                push_log('[start] 使用 window.start_download 调用完毕 (含设置)')
+                push_log(`[settings] out=${output}, fmt=${fmt}, threads=${threads}`)
                 called = true
             } catch (e) {
                 push_log('[start] window.start_download 调用异常: ' + e)

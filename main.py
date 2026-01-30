@@ -5,16 +5,26 @@ from typing import Callable, Optional
 
 from urllib import parse
 
-from image_url import get_image_info, get_image_content, get_headers
+from image_url import get_image_info, get_image_content
 import json
 
 root_path = "./download"
 
 
 def download_block(
-    path: str, infos: list, progress: Optional[Callable[[str], None]] = None
+    path: str,
+    infos: list,
+    progress: Optional[Callable[[str], None]] = None,
+    root_path: Optional[str] = None,
+    filename_format: str = "{id:03d}_{name}{ext}",
 ) -> None:
     """Download a block of images for a single page.
+
+    New parameters:
+      - root_path: override the base download directory (defaults to the
+        module-level ``root_path``).
+      - filename_format: format string used to generate filenames. It can
+        use placeholders ``id``, ``name``, and ``ext`` (e.g. "{id:03d}_{name}{ext}").
 
     For each image info in ``infos`` this function will ensure the page
     directory exists, download the image bytes via
@@ -24,35 +34,42 @@ def download_block(
 
         {"event": "file", "status": "done|skipped|error", "page": <page>,
          "name": <name>, "filename": <path>, ["error": <message>]}
-
-    Parameters
-    ----------
-    path:
-        The page directory name (derived from the telegra.ph URL).
-    infos:
-        A list of dicts produced by :func:`image_url.get_image_info`, each
-        containing keys ``name``, ``url`` and ``id``.
-    progress:
-        Optional callable that accepts a single string message. This
-        function uses the callback to emit JSON messages describing file
-        progress. Exceptions raised by the callback are ignored.
-
-    Returns
-    -------
-    None
-
-    Notes
-    -----
-    This function swallows exceptions from the ``progress`` callback, but
-    allows exceptions raised during the actual download to be captured and
-    reported as a file-level error event in the JSON payload.
     """
+    # determine which root to use
+    rp = (
+        root_path if root_path is not None else globals().get("root_path", "./download")
+    )
+
     for i in infos:
         name = i["name"]
         url = i["url"]
-        # ensure path is inside root_path
-        page_dir = os.path.join(root_path, path)
-        filename = os.path.join(page_dir, f"image_{i['id']:03d}_{name}")
+        page_dir = os.path.join(rp, path)
+
+        # determine extension and basename
+        base, ext = os.path.splitext(name)
+        if not ext:
+            ext = os.path.splitext(parse.urlparse(url).path)[1] or ".jpg"
+        name_no_ext = base
+
+        # clean name component
+        safe_name_component = re.sub(r'[<>:"/\\|?*]', "", name_no_ext)
+
+        # attempt to format using the provided filename_format
+        try:
+            safe_name = filename_format.format(
+                id=i["id"], name=safe_name_component, ext=ext
+            )
+        except Exception:
+            # fallback to previous behaviour on format error
+            if name.startswith("http://") or name.startswith("https://"):
+                safe_name = f"{i['id']:03d}{ext if ext else '.jpg'}"
+            else:
+                safe_name = re.sub(r"[<>:\"/\\|?*]", "", name)
+                safe_name = (
+                    f"{i['id']:03d}_{safe_name}" if safe_name else f"{i['id']:03d}.jpg"
+                )
+
+        filename = os.path.join(page_dir, safe_name)
         if not os.path.exists(page_dir):
             os.makedirs(page_dir, exist_ok=True)
         if not os.path.exists(filename):
@@ -93,33 +110,17 @@ def download_block(
 
 
 def download_image(
-    url: str, threadcnt: int = 32, progress: Optional[Callable[[str], None]] = None
+    url: str,
+    threadcnt: int = 32,
+    progress: Optional[Callable[[str], None]] = None,
+    root_path: Optional[str] = None,
+    filename_format: str = "{id:03d}_{name}{ext}",
 ) -> None:
     """Download all images from a single telegra.ph page.
 
-    The function will parse the telegra.ph `url` to derive a directory
-    name, fetch image metadata with :func:`image_url.get_image_info` and
-    dispatch worker threads to download images in parallel. It emits page
-    lifecycle events through the ``progress`` callback as JSON strings:
-
-      - Page start:  {"event":"page", "action":"start", "page":...}
-      - File events: see :func:`download_block` for file payload shape
-      - Page end:    {"event":"page", "action":"end", "page":...}
-
-    Parameters
-    ----------
-    url:
-        A full telegra.ph page URL (e.g. "https://telegra.ph/SomePage-10-01").
-    threadcnt:
-        Number of per-page worker buckets used to partition images. The
-        implementation uses ``id % threadcnt`` to distribute work.
-    progress:
-        Optional callable receiving string messages (JSON-encoded events).
-
-    Raises
-    ------
-    ValueError
-        If a page path cannot be extracted from ``url``.
+    Additional parameters ``root_path`` and ``filename_format`` are passed
+    to :func:`download_block` to control output location and filename
+    generation.
     """
     m = re.findall(r"telegra.ph/(.+)", parse.unquote(url))
     if not m:
@@ -145,7 +146,10 @@ def download_image(
             pass
 
     for blk in infolst:
-        t = threading.Thread(target=download_block, args=(path, blk, progress))
+        t = threading.Thread(
+            target=download_block,
+            args=(path, blk, progress, root_path, filename_format),
+        )
         threads.append(t)
         t.start()
     for t in threads:
@@ -164,28 +168,21 @@ def download_image(
 
 
 def download_imagelist(
-    urls: str, threadcnt: int = 32, progress: Optional[Callable[[str], None]] = None
+    urls: str,
+    threadcnt: int = 32,
+    progress: Optional[Callable[[str], None]] = None,
+    root_path: Optional[str] = None,
+    filename_format: str = "{id:03d}_{name}{ext}",
 ) -> None:
     """Download images from multiple telegra.ph pages.
 
     The input is a multi-line string where each non-empty line is treated as
     a telegra.ph page URL. For each page a background thread is started
     which calls :func:`download_image`. The per-page worker thread count is
-    computed as ``max(1, threadcnt // num_pages)``.
+    computed as ``max(1,threadcnt // num_pages)``.
 
-    Parameters
-    ----------
-    urls:
-        Multi-line string: one telegra.ph URL per line.
-    threadcnt:
-        Total number of worker buckets to divide among pages.
-    progress:
-        Optional callback to receive JSON-encoded progress messages from
-        page/file events.
-
-    Returns
-    -------
-    None
+    Additional parameters ``root_path`` and ``filename_format`` are
+    forwarded to per-page workers.
     """
     url_list = [u.strip() for u in urls.splitlines() if u.strip()]
     if not url_list:
@@ -194,7 +191,8 @@ def download_imagelist(
     threads: list[threading.Thread] = []
     for url in url_list:
         t = threading.Thread(
-            target=download_image, args=(url, per_page_threads, progress)
+            target=download_image,
+            args=(url, per_page_threads, progress, root_path, filename_format),
         )
         threads.append(t)
         t.start()

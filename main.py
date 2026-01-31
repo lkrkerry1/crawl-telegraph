@@ -1,22 +1,24 @@
 import os
 import re
+from pathlib import Path
 import threading
 from typing import Callable, Optional
 
 from urllib import parse
-
-from image_url import get_image_info, get_image_content
 import json
 
-root_path = "./download"
+from image_url import get_image_info, get_image_content
+from compress import compress_image
 
 
 def download_block(
-    path: str,
+    fn: Path,
     infos: list,
-    progress: Optional[Callable[[str], None]] = None,
-    root_path: Optional[str] = None,
+    opt_path: Path = Path("./download"),
+    temp_path: Path = Path("./temp"),
     filename_format: str = "{id:03d}_{name}{ext}",
+    compress: bool = True,
+    progress: Optional[Callable[[str], None]] = None,
 ) -> None:
     """Download a block of images for a single page.
 
@@ -36,14 +38,11 @@ def download_block(
          "name": <name>, "filename": <path>, ["error": <message>]}
     """
     # determine which root to use
-    rp = (
-        root_path if root_path is not None else globals().get("root_path", "./download")
-    )
 
     for i in infos:
         name = i["name"]
         url = i["url"]
-        page_dir = os.path.join(rp, path)
+        page_dir = opt_path / fn
 
         # determine extension and basename
         base, ext = os.path.splitext(name)
@@ -69,36 +68,49 @@ def download_block(
                     f"{i['id']:03d}_{safe_name}" if safe_name else f"{i['id']:03d}.jpg"
                 )
 
-        filename = os.path.join(page_dir, safe_name)
+        filename = page_dir / safe_name
         if not os.path.exists(page_dir):
             os.makedirs(page_dir, exist_ok=True)
         if not os.path.exists(filename):
             try:
                 with open(filename, "wb") as f:
                     f.write(get_image_content(url))
+                # compress downloaded image
+                if compress:
+                    compress_image(filename, filename, temp_path=temp_path / safe_name)
                 evt = {
                     "event": "file",
                     "status": "done",
-                    "page": path,
+                    "page": str(fn),
                     "name": name,
-                    "filename": filename,
+                    "filename": str(filename),
+                }
+            except FileNotFoundError as e:
+                evt = {
+                    "event": "file",
+                    "status": "warning",
+                    "page": str(fn),
+                    "name": name,
+                    "filename": str(filename),
+                    "error": str(e),
                 }
             except Exception as e:
                 evt = {
                     "event": "file",
                     "status": "error",
-                    "page": path,
+                    "page": str(fn),
                     "name": name,
-                    "filename": filename,
+                    "filename": str(filename),
                     "error": str(e),
                 }
+                raise
         else:
             evt = {
                 "event": "file",
                 "status": "skipped",
-                "page": path,
+                "page": str(fn),
                 "name": name,
-                "filename": filename,
+                "filename": str(filename),
             }
         payload = json.dumps(evt, ensure_ascii=False)
         print(payload)
@@ -112,9 +124,9 @@ def download_block(
 def download_image(
     url: str,
     threadcnt: int = 32,
-    progress: Optional[Callable[[str], None]] = None,
-    root_path: Optional[str] = None,
+    opt_path: Path = Path("./download"),
     filename_format: str = "{id:03d}_{name}{ext}",
+    progress: Optional[Callable[[str], None]] = None,
 ) -> None:
     """Download all images from a single telegra.ph page.
 
@@ -125,7 +137,7 @@ def download_image(
     m = re.findall(r"telegra.ph/(.+)", parse.unquote(url))
     if not m:
         raise ValueError(f"无法从 url 提取页面路径: {url}")
-    path = m[0]
+    fn = m[0]
     info = get_image_info(url)
     threads: list[threading.Thread] = []
 
@@ -138,7 +150,7 @@ def download_image(
         try:
             progress(
                 json.dumps(
-                    {"event": "page", "action": "start", "page": path},
+                    {"event": "page", "action": "start", "page": fn},
                     ensure_ascii=False,
                 )
             )
@@ -148,7 +160,13 @@ def download_image(
     for blk in infolst:
         t = threading.Thread(
             target=download_block,
-            args=(path, blk, progress, root_path, filename_format),
+            kwargs={
+                "fn": Path(fn),
+                "infos": blk,
+                "opt_path": opt_path,
+                "filename_format": filename_format,
+                "progress": progress,
+            },
         )
         threads.append(t)
         t.start()
@@ -160,7 +178,7 @@ def download_image(
         try:
             progress(
                 json.dumps(
-                    {"event": "page", "action": "end", "page": path}, ensure_ascii=False
+                    {"event": "page", "action": "end", "page": fn}, ensure_ascii=False
                 )
             )
         except Exception:
@@ -170,9 +188,9 @@ def download_image(
 def download_imagelist(
     urls: str,
     threadcnt: int = 32,
-    progress: Optional[Callable[[str], None]] = None,
-    root_path: Optional[str] = None,
+    opt_path: Path = Path("./download"),
     filename_format: str = "{id:03d}_{name}{ext}",
+    progress: Optional[Callable[[str], None]] = None,
 ) -> None:
     """Download images from multiple telegra.ph pages.
 
@@ -192,7 +210,13 @@ def download_imagelist(
     for url in url_list:
         t = threading.Thread(
             target=download_image,
-            args=(url, per_page_threads, progress, root_path, filename_format),
+            kwargs={
+                "url": url,
+                "threadcnt": per_page_threads,
+                "opt_path": opt_path,
+                "filename_format": filename_format,
+                "progress": progress,
+            },
         )
         threads.append(t)
         t.start()

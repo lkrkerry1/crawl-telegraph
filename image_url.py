@@ -94,12 +94,17 @@ def get_image_url_name(img_info):
     """Convert raw image src paths into structured info dicts.
 
     Each returned dict has keys: ``name`` (file name), ``url`` (absolute
-    telegra.ph URL) and ``id`` (sequential index).
+    URL) and ``id`` (sequential index).
     """
     info = []
     for id, i in enumerate(img_info):
-        name = i.replace("/file/", "")
-        url = "https://telegra.ph" + i
+        # 如果 i 已经是完整的 URL（http:// 或 https://），直接使用；否则添加 telegra.ph 前缀
+        if i.startswith("http://") or i.startswith("https://"):
+            url = i
+            name = i.split("/")[-1]  # 从 URL 中提取文件名
+        else:
+            url = "https://telegra.ph" + i
+            name = i.replace("/file/", "")
         info.append({"name": name, "url": url, "id": id})
     return info
 

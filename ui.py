@@ -125,5 +125,10 @@ iface = gr.Interface(
 )
 
 
-if __name__ == "__main__":
+def launch_ui():
+    """Launch the Gradio UI for the package console-script entry point."""
     iface.launch()
+
+
+if __name__ == "__main__":
+    launch_ui()

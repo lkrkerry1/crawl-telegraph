@@ -9,9 +9,9 @@ description = "Small toolset to scrape and download images from telegra.ph pages
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Kerry", email = "kerry@example.com" }
+    { name = "lkrkerry", email = "lkrkerry@outlook.com" }
 ]
-requires-python = "3.12"
+requires-python = ">=3.12,<13"
 keywords = ["telegra.ph", "crawler", "images", "download"]
 classifiers = [
     "Programming Language :: Python :: 3",
